@@ -13,22 +13,14 @@ class Brand extends StatelessWidget {
   Widget build(BuildContext context) => Column(
     mainAxisSize: MainAxisSize.min,
     children: [
-      CustomPaint(
-        size: Size(compact ? 41 : 82, compact ? 17 : 34),
-        painter: BrandPainter(),
-      ),
-      Text(
-        'SENZ',
-        style: TextStyle(
-          color: senzDeepGreen,
-          fontSize: compact ? 24 : 58,
-          height: .98,
-          fontWeight: FontWeight.w800,
-          letterSpacing: compact ? 1 : 3,
-        ),
+      Image.asset(
+        'assets/images/senz_smart_sensing_logo.png',
+        width: compact ? 52 : 132,
+        height: compact ? 52 : 132,
+        fit: BoxFit.contain,
       ),
       if (!compact) ...[
-        const SizedBox(height: 12),
+        const SizedBox(height: 4),
         const Text(
           'Sign. Speak. Connect.',
           style: TextStyle(
@@ -40,37 +32,6 @@ class Brand extends StatelessWidget {
       ],
     ],
   );
-}
-
-class BrandPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = const Color(0xFF113E36)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 4
-      ..strokeCap = StrokeCap.round;
-    final sx = size.width / 82;
-    final sy = size.height / 34;
-    canvas.save();
-    canvas.scale(sx, sy);
-    canvas.drawLine(const Offset(18, 27), const Offset(10, 12), paint);
-    canvas.drawLine(const Offset(31, 22), const Offset(25, 5), paint);
-    canvas.drawLine(const Offset(64, 27), const Offset(72, 12), paint);
-    canvas.drawLine(const Offset(51, 22), const Offset(57, 5), paint);
-    final arc1 = Path()
-      ..moveTo(36, 15)
-      ..cubicTo(40, 11, 44, 11, 48, 15);
-    final arc2 = Path()
-      ..moveTo(32, 9)
-      ..cubicTo(39, 2, 46, 2, 53, 9);
-    canvas.drawPath(arc1, paint);
-    canvas.drawPath(arc2, paint);
-    canvas.restore();
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 class Landscape extends StatelessWidget {
