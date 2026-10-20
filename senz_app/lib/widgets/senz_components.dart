@@ -168,8 +168,14 @@ class SoftCard extends StatelessWidget {
 }
 
 class GloveStage extends StatefulWidget {
-  const GloveStage({super.key, this.bends = const [0, 0, 0, 0, 0]});
+  const GloveStage({
+    super.key,
+    this.bends = const [0, 0, 0, 0, 0],
+    this.fingerColors,
+  });
   final List<double> bends;
+  /// Optional colors in Thumb, Index, Middle, Ring, Little order.
+  final List<Color>? fingerColors;
 
   @override
   State<GloveStage> createState() => _GloveStageState();
@@ -261,7 +267,10 @@ class _GloveStageState extends State<GloveStage> with TickerProviderStateMixin {
               angle: math.sin(phase) * .015,
               child: CustomPaint(
                 size: const Size(190, 220),
-                painter: GlovePainter(bends: _shown),
+                painter: GlovePainter(
+                  bends: _shown,
+                  fingerColors: widget.fingerColors,
+                ),
               ),
             ),
           ),
@@ -272,8 +281,11 @@ class _GloveStageState extends State<GloveStage> with TickerProviderStateMixin {
 }
 
 class GlovePainter extends CustomPainter {
-  const GlovePainter({required this.bends});
+  const GlovePainter({required this.bends, this.fingerColors});
   final List<double> bends;
+  final List<Color>? fingerColors;
+
+  static const _defaultFingerColor = Color(0xFF57A75B);
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -308,7 +320,9 @@ class GlovePainter extends CustomPainter {
         spec.$4,
         spec.$5,
         bends[i].clamp(0, 1),
-        hand,
+        fingerColors != null && i < fingerColors!.length
+            ? fingerColors![i]
+            : _defaultFingerColor,
       );
     }
 
@@ -354,7 +368,7 @@ class GlovePainter extends CustomPainter {
     double openAngle,
     double curlDirection,
     double bend,
-    Paint hand,
+    Color fingerColor,
   ) {
     final proximalAngle = openAngle + bend * curlDirection * .58;
     final distalAngle = proximalAngle + bend * curlDirection * 1.06;
@@ -365,15 +379,15 @@ class GlovePainter extends CustomPainter {
       ..strokeWidth = 22
       ..strokeCap = StrokeCap.round;
     final inner = Paint()
-      ..shader = hand.shader
+      ..color = fingerColor
       ..strokeWidth = 16
       ..strokeCap = StrokeCap.round;
     canvas.drawLine(base, joint, outline);
     canvas.drawLine(joint, tip, outline);
     canvas.drawLine(base, joint, inner);
     canvas.drawLine(joint, tip, inner);
-    canvas.drawCircle(joint, 4, Paint()..color = const Color(0xFF58B55A));
-    canvas.drawCircle(tip, 3, Paint()..color = const Color(0xFF8BD16B));
+    canvas.drawCircle(joint, 4, Paint()..color = Colors.white);
+    canvas.drawCircle(tip, 3, Paint()..color = fingerColor);
   }
 
   Offset _along(Offset start, double length, double angle) => Offset(
@@ -383,7 +397,8 @@ class GlovePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant GlovePainter oldDelegate) =>
-      !_sameBends(oldDelegate.bends, bends);
+      !_sameBends(oldDelegate.bends, bends) ||
+      !_sameColors(oldDelegate.fingerColors, fingerColors);
 
   bool _sameBends(List<double> oldBends, List<double> newBends) =>
       oldBends.length == newBends.length &&
@@ -391,6 +406,16 @@ class GlovePainter extends CustomPainter {
         oldBends.length,
         (index) => oldBends[index] == newBends[index],
       ).every((same) => same);
+
+  bool _sameColors(List<Color>? oldColors, List<Color>? newColors) =>
+      identical(oldColors, newColors) ||
+      (oldColors != null &&
+          newColors != null &&
+          oldColors.length == newColors.length &&
+          List.generate(
+            oldColors.length,
+            (index) => oldColors[index] == newColors[index],
+          ).every((same) => same));
 }
 
 class BottomNavigation extends StatelessWidget {

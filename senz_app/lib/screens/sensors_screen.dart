@@ -23,6 +23,27 @@ class SensorsScreen extends StatelessWidget {
       return ListView(
         padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
         children: [
+          SoftCard(
+            padding: const EdgeInsets.all(12),
+            radius: 19,
+            child: Column(
+              children: [
+                const Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'Finger position map',
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                GloveStage(
+                  bends: controller.handPose,
+                  fingerColors: readings.map((reading) => reading.$2).toList(),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
           Container(
             decoration: BoxDecoration(
               color: Colors.white.withValues(alpha: .78),
