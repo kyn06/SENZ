@@ -50,7 +50,9 @@ class SenzController extends ChangeNotifier {
   final SenzStateStore _stateStore = SenzStateStore();
   final SequenceSignRecognizer _recognizer = SequenceSignRecognizer();
   final List<GestureRecord> _history = [];
-  final List<List<int>> _captureFrames = [];
+  final List<FslSignDefinition> _fslCatalog = [];
+  final List<List<int>> _trainingFrames = [];
+  final List<List<int>> _liveFrames = [];
   Future<void> _pendingStateWrite = Future<void>.value();
 
   StreamSubscription<SensorReading>? _demoSubscription;
@@ -58,10 +60,11 @@ class SenzController extends ChangeNotifier {
   SensorMode mode = SensorMode.demo;
   ThemeMode themeMode = ThemeMode.light;
   SensorReading? reading;
-  String gesture = 'No sign recognized';
-  String? captureMessage;
+  String gesture = 'Waiting for a supported FSL sign';
   FslSignDefinition? recognizedSign;
-  bool isCapturingSign = false;
+  bool isCapturingTrainingSample = false;
+  bool isLiveTranslationEnabled = false;
+  String? trainingMessage;
   String speechLanguage = 'fil-PH';
   String speechSpeed = 'Normal';
   String dataFormat = 'CSV (5 integers)';
@@ -78,13 +81,23 @@ class SenzController extends ChangeNotifier {
   String? _savedDeviceId;
   String? _savedDeviceName;
   bool _reconnectOnLaunch = false;
+  int _liveFrameCount = 0;
+  int _candidateWindowCount = 0;
+  int _unmatchedWindowCount = 0;
+  String? _candidateSignId;
+  String? _lastEmittedSignId;
 
   static const _demoOpenValues = [1820, 1750, 1900, 1680, 1800];
   static const _demoClosedValues = [3200, 3150, 3300, 3080, 3180];
   static const _fallbackOpenValues = [1000, 1000, 1000, 1000, 1000];
   static const _fallbackClosedValues = [3200, 3200, 3200, 3200, 3200];
+  static const _liveWindowLength = 12;
+  static const _liveEvaluationInterval = 3;
+  static const _stableWindowsRequired = 3;
+  static const _releaseWindowsRequired = 3;
 
   List<GestureRecord> get history => List.unmodifiable(_history);
+  List<FslSignDefinition> get fslSigns => List.unmodifiable(_fslCatalog);
   bool get isDemoMode => mode == SensorMode.demo;
   bool get isConnected => bluetooth.isConnected;
   bool get isScanning => bluetooth.isScanning;
@@ -93,7 +106,30 @@ class SenzController extends ChangeNotifier {
   bool get hasClosedHandCalibration => _closedHandPoseCalibration != null;
   bool get isCalibrated => hasOpenHandCalibration && hasClosedHandCalibration;
   bool get canCalibrateHandPose => reading != null && !isDemoMode;
-  bool get hasFslSignTemplates => FslSignCatalog.signs.isNotEmpty;
+  bool get hasFslSignTemplates =>
+      _fslCatalog.any((sign) => sign.examples.isNotEmpty);
+  int get trainingFrameCount => _trainingFrames.length;
+  bool get hasPendingTrainingSample =>
+      !isCapturingTrainingSample && _trainingFrames.length >= 6;
+  bool get canRecordFslSample =>
+      !isDemoMode && isConnected && isCalibrated && !isCapturingTrainingSample;
+
+  String get liveTranslationMessage {
+    if (!isLiveTranslationEnabled) {
+      return 'Open Translate to begin live listening.';
+    }
+    if (isDemoMode) {
+      return 'Switch to Hardware Mode to use live FSL translation.';
+    }
+    if (!isConnected) return 'Connect the BLE glove to begin live translation.';
+    if (!isCalibrated) {
+      return 'Capture open-hand and closed-hand calibration in Settings.';
+    }
+    if (!hasFslSignTemplates) {
+      return 'Add FSL-reviewed sign examples on the FSL Sign Data page.';
+    }
+    return 'Listening for supported signs. Perform one sign at a time.';
+  }
 
   List<double> get handPose {
     final values = reading?.values;
@@ -168,6 +204,9 @@ class SenzController extends ChangeNotifier {
     _reconnectOnLaunch = saved['reconnectOnLaunch'] as bool? ?? false;
     _openHandPoseCalibration = _intList(saved['openHandCalibration']);
     _closedHandPoseCalibration = _intList(saved['closedHandCalibration']);
+    _fslCatalog
+      ..clear()
+      ..addAll(_readFslCatalog(saved['fslCatalog']));
 
     final navigation = saved['navigationStack'];
     if (navigation is List) {
@@ -197,6 +236,48 @@ class SenzController extends ChangeNotifier {
           }),
         );
     }
+  }
+
+  List<FslSignDefinition> _readFslCatalog(Object? value) {
+    if (value is! List) return FslSignCatalog.signs;
+    final signs = <FslSignDefinition>[];
+    for (final entry in value.whereType<Map>()) {
+      final id = entry['id'];
+      final displayName = entry['displayName'];
+      final translation = entry['translation'];
+      final rawExamples = entry['examples'];
+      if (id is! String ||
+          displayName is! String ||
+          translation is! String ||
+          rawExamples is! List) {
+        continue;
+      }
+      final examples = <List<List<double>>>[];
+      for (final rawExample in rawExamples) {
+        if (rawExample is! List) continue;
+        final frames = <List<double>>[];
+        for (final rawFrame in rawExample) {
+          if (rawFrame is! List || rawFrame.length != 5) continue;
+          final values = rawFrame
+              .whereType<num>()
+              .map((n) => n.toDouble())
+              .toList();
+          if (values.length == 5) frames.add(values);
+        }
+        if (frames.length >= 2) examples.add(frames);
+      }
+      if (id.isNotEmpty && displayName.isNotEmpty && examples.isNotEmpty) {
+        signs.add(
+          FslSignDefinition(
+            id: id,
+            displayName: displayName,
+            translation: translation,
+            examples: examples,
+          ),
+        );
+      }
+    }
+    return signs;
   }
 
   List<int>? _intList(Object? value) => value is List
@@ -232,6 +313,16 @@ class SenzController extends ChangeNotifier {
     'closedHandCalibration': _closedHandPoseCalibration,
     'navigationStack': restoredNavigationStack,
     'welcomeCompleted': welcomeCompleted,
+    'fslCatalog': _fslCatalog
+        .map(
+          (sign) => {
+            'id': sign.id,
+            'displayName': sign.displayName,
+            'translation': sign.translation,
+            'examples': sign.examples,
+          },
+        )
+        .toList(),
     'history': _history
         .map(
           (entry) => {
@@ -282,85 +373,226 @@ class SenzController extends ChangeNotifier {
   }
 
   void _onBluetoothChanged() {
-    if (mode == SensorMode.hardware) notifyListeners();
+    if (mode == SensorMode.hardware) {
+      if (!isConnected) _resetLiveRecognition(clearResult: true);
+      notifyListeners();
+    }
   }
 
   void _onReading(SensorReading next) {
     if (next.isSimulated != isDemoMode) return;
     reading = next;
-    if (isCapturingSign) {
-      _captureFrames.add(next.values);
-      if (_captureFrames.length > 300) _captureFrames.removeAt(0);
+    if (isCapturingTrainingSample && !next.isSimulated) {
+      _trainingFrames.add(next.values);
+      if (_trainingFrames.length > 300) _trainingFrames.removeAt(0);
+    }
+    if (isLiveTranslationEnabled && !next.isSimulated) {
+      _processLiveReading(next.values);
     }
     notifyListeners();
   }
 
-  void beginSignCapture() {
-    _captureFrames.clear();
-    recognizedSign = null;
-    gesture = 'Recording sign…';
-    captureMessage = isDemoMode
-        ? 'Recording simulated sensor data'
-        : 'Hold one sign, then tap Finish';
-    isCapturingSign = true;
+  void beginTrainingSample() {
+    if (isDemoMode) {
+      trainingMessage =
+          'Switch to Hardware Mode before recording real FSL data.';
+    } else if (!isConnected) {
+      trainingMessage = 'Connect the BLE glove before recording an example.';
+    } else if (!isCalibrated) {
+      trainingMessage = 'Capture open-hand and closed-hand calibration first.';
+    } else {
+      _trainingFrames.clear();
+      isCapturingTrainingSample = true;
+      trainingMessage =
+          'Perform one FSL-reviewed sign, then stop the recording.';
+    }
     notifyListeners();
   }
 
-  void finishSignCapture() {
-    if (!isCapturingSign) return;
-    isCapturingSign = false;
-    if (_captureFrames.length < 6) {
-      gesture = 'Not recognized';
-      captureMessage = 'Capture was too short. Record the sign again.';
-      notifyListeners();
+  void stopTrainingSample() {
+    if (!isCapturingTrainingSample) return;
+    isCapturingTrainingSample = false;
+    trainingMessage = _trainingFrames.length < 6
+        ? 'Sample too short. Record the sign again.'
+        : '${_trainingFrames.length} sensor frames captured. Save this example or record it again.';
+    notifyListeners();
+  }
+
+  String? saveTrainingSample({
+    required String displayName,
+    required String translation,
+  }) {
+    final label = displayName.trim();
+    final spokenText = translation.trim();
+    if (label.isEmpty || spokenText.isEmpty) {
+      return 'Enter the FSL sign name and Filipino word or phrase.';
+    }
+    if (isCapturingTrainingSample) {
+      return 'Stop the recording before saving the example.';
+    }
+    if (!isCalibrated) {
+      return 'Capture open-hand and closed-hand calibration first.';
+    }
+    if (_trainingFrames.length < 6) {
+      return 'Record at least six sensor frames first.';
+    }
+    if (List<int>.generate(
+      5,
+      (index) =>
+          _closedHandPoseCalibration![index] - _openHandPoseCalibration![index],
+    ).contains(0)) {
+      return 'The calibration poses are too similar. Recalibrate before saving.';
+    }
+
+    final signId = label.toLowerCase();
+    final existingIndex = _fslCatalog.indexWhere((sign) => sign.id == signId);
+    if (existingIndex >= 0 &&
+        _fslCatalog[existingIndex].translation.toLowerCase() !=
+            spokenText.toLowerCase()) {
+      return 'This sign name already has a different Filipino translation.';
+    }
+
+    final example = _trainingFrames
+        .map(
+          (frame) => List<double>.generate(5, (channel) {
+            final span =
+                _closedHandPoseCalibration![channel] -
+                _openHandPoseCalibration![channel];
+            if (span == 0) return 0;
+            return ((frame[channel] - _openHandPoseCalibration![channel]) /
+                    span)
+                .clamp(0.0, 1.0)
+                .toDouble();
+          }),
+        )
+        .toList();
+
+    if (existingIndex >= 0) {
+      final existing = _fslCatalog[existingIndex];
+      _fslCatalog[existingIndex] = FslSignDefinition(
+        id: existing.id,
+        displayName: existing.displayName,
+        translation: existing.translation,
+        examples: [...existing.examples, example],
+      );
+    } else {
+      _fslCatalog.add(
+        FslSignDefinition(
+          id: signId,
+          displayName: label,
+          translation: spokenText,
+          examples: [example],
+        ),
+      );
+    }
+    _trainingFrames.clear();
+    trainingMessage = 'Example saved. Record more variations for this sign.';
+    _saveState();
+    notifyListeners();
+    return null;
+  }
+
+  void deleteFslSign(String id) {
+    _fslCatalog.removeWhere((sign) => sign.id == id);
+    _saveState();
+    notifyListeners();
+  }
+
+  void startLiveTranslation() {
+    isLiveTranslationEnabled = true;
+    _resetLiveRecognition(clearResult: true);
+    notifyListeners();
+  }
+
+  void stopLiveTranslation() {
+    isLiveTranslationEnabled = false;
+    _resetLiveRecognition(clearResult: false);
+  }
+
+  void _processLiveReading(List<int> values) {
+    if (!isConnected || !isCalibrated || !hasFslSignTemplates) {
+      _liveFrames.clear();
+      _liveFrameCount = 0;
+      return;
+    }
+    _liveFrames.add(values);
+    if (_liveFrames.length > _liveWindowLength) _liveFrames.removeAt(0);
+    _liveFrameCount++;
+    if (_liveFrames.length < _liveWindowLength ||
+        _liveFrameCount % _liveEvaluationInterval != 0) {
       return;
     }
 
-    final match = isDemoMode || !isCalibrated
-        ? null
-        : _recognizer.recognize(
-            _captureFrames,
-            openHandBaseline: _openHandPoseCalibration!,
-            closedHandBaseline: _closedHandPoseCalibration!,
-          );
-    recognizedSign = match?.sign;
-    gesture = match?.sign.displayName ?? 'Not recognized';
-    captureMessage = match == null
-        ? (isDemoMode
-              ? 'Simulated readings are not used to recognize FSL signs.'
-              : !isCalibrated
-              ? 'Capture open-hand and closed-hand calibration first.'
-              : hasFslSignTemplates
-              ? 'No confident match. Try again with one supported sign.'
-              : 'No FSL sign examples are configured yet.')
-        : 'Matched a predefined FSL sign';
-
-    if (match != null) {
-      _history.insert(
-        0,
-        GestureRecord(
-          name: match.sign.displayName,
-          timestamp: DateTime.now(),
-          isSimulated: isDemoMode,
-          translation: match.sign.translation,
-        ),
-      );
-      if (_history.length > 100) _history.removeLast();
-      _saveState();
+    final match = _recognizer.recognize(
+      _liveFrames,
+      openHandBaseline: _openHandPoseCalibration!,
+      closedHandBaseline: _closedHandPoseCalibration!,
+      signs: _fslCatalog,
+    );
+    if (match == null) {
+      _unmatchedWindowCount++;
+      _candidateSignId = null;
+      _candidateWindowCount = 0;
+      if (_unmatchedWindowCount >= _releaseWindowsRequired) {
+        _lastEmittedSignId = null;
+        if (recognizedSign != null) {
+          recognizedSign = null;
+          gesture = 'Listening for a supported FSL sign';
+        }
+      }
+      return;
     }
-    _captureFrames.clear();
-    notifyListeners();
+
+    _unmatchedWindowCount = 0;
+    if (_candidateSignId == match.sign.id) {
+      _candidateWindowCount++;
+    } else {
+      _candidateSignId = match.sign.id;
+      _candidateWindowCount = 1;
+    }
+    if (_candidateWindowCount < _stableWindowsRequired ||
+        _lastEmittedSignId == match.sign.id) {
+      return;
+    }
+
+    _lastEmittedSignId = match.sign.id;
+    recognizedSign = match.sign;
+    gesture = match.sign.displayName;
+    _history.insert(
+      0,
+      GestureRecord(
+        name: match.sign.displayName,
+        timestamp: DateTime.now(),
+        isSimulated: false,
+        translation: match.sign.translation,
+      ),
+    );
+    if (_history.length > 100) _history.removeLast();
+    _saveState();
+    unawaited(speakText(match.sign.translation));
+  }
+
+  void _resetLiveRecognition({required bool clearResult}) {
+    _liveFrames.clear();
+    _liveFrameCount = 0;
+    _candidateWindowCount = 0;
+    _unmatchedWindowCount = 0;
+    _candidateSignId = null;
+    _lastEmittedSignId = null;
+    if (clearResult) {
+      recognizedSign = null;
+      gesture = 'Waiting for a supported FSL sign';
+    }
   }
 
   Future<void> setMode(SensorMode value) async {
     if (mode == value) return;
     mode = value;
     reading = null;
-    isCapturingSign = false;
-    _captureFrames.clear();
+    isCapturingTrainingSample = false;
+    _trainingFrames.clear();
+    _resetLiveRecognition(clearResult: true);
     recognizedSign = null;
-    captureMessage = null;
-    gesture = 'No sign recognized';
     if (value == SensorMode.demo) {
       await bluetooth.disconnect();
       await demo.start();

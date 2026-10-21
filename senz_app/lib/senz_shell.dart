@@ -5,6 +5,7 @@ import 'navigation/senz_screen.dart';
 import 'screens/history_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/sensors_screen.dart';
+import 'screens/sign_data_screen.dart';
 import 'screens/settings_screen.dart';
 import 'screens/translate_screen.dart';
 import 'screens/welcome_screen.dart';
@@ -25,6 +26,14 @@ class _SenzShellState extends State<SenzShell> {
   int _homeBackPresses = 0;
 
   SenzScreen get screen => _stack.last;
+
+  bool get _showsGlobalNavigation => switch (screen) {
+    SenzScreen.home ||
+    SenzScreen.sensors ||
+    SenzScreen.translate ||
+    SenzScreen.history => true,
+    SenzScreen.welcome || SenzScreen.signData || SenzScreen.settings => false,
+  };
 
   @override
   void initState() {
@@ -152,7 +161,7 @@ class _SenzShellState extends State<SenzShell> {
                   children: [
                     _topBar(),
                     Expanded(child: _page()),
-                    if (screen != SenzScreen.settings)
+                    if (_showsGlobalNavigation)
                       BottomNavigation(selected: screen, onSelect: navigateTo),
                   ],
                 ),
@@ -165,11 +174,12 @@ class _SenzShellState extends State<SenzShell> {
     final title = switch (screen) {
       SenzScreen.sensors => 'Sensor Readings',
       SenzScreen.history => 'Gesture History',
+      SenzScreen.signData => 'FSL Sign Data',
       SenzScreen.settings => 'Settings',
       _ => null,
     };
     final showBack = _stack.length > 1;
-    final showSettings = screen != SenzScreen.settings;
+    final showSettings = _showsGlobalNavigation;
     return SizedBox(
       height: 61,
       child: Padding(
@@ -228,7 +238,11 @@ class _SenzShellState extends State<SenzShell> {
     SenzScreen.sensors => SensorsScreen(controller: widget.controller),
     SenzScreen.translate => TranslateScreen(controller: widget.controller),
     SenzScreen.history => HistoryScreen(controller: widget.controller),
-    SenzScreen.settings => SettingsScreen(controller: widget.controller),
+    SenzScreen.signData => SignDataScreen(controller: widget.controller),
+    SenzScreen.settings => SettingsScreen(
+      controller: widget.controller,
+      onOpenSignData: () => navigateTo(SenzScreen.signData),
+    ),
     SenzScreen.welcome => const SizedBox.shrink(),
   };
 }

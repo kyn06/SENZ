@@ -6,8 +6,13 @@ import '../app_theme.dart';
 import '../services/senz_controller.dart';
 
 class SettingsScreen extends StatelessWidget {
-  const SettingsScreen({super.key, required this.controller});
+  const SettingsScreen({
+    super.key,
+    required this.controller,
+    required this.onOpenSignData,
+  });
   final SenzController controller;
+  final VoidCallback onOpenSignData;
 
   @override
   Widget build(BuildContext context) => AnimatedBuilder(
@@ -74,6 +79,16 @@ class SettingsScreen extends StatelessWidget {
             title: 'Speech Speed',
             detail: controller.speechSpeed,
             onTap: () => _chooseSpeed(context),
+          ),
+        ]),
+        _section('Recognition Data', [
+          _row(
+            icon: Icons.library_add_outlined,
+            title: 'FSL Sign Data',
+            detail: controller.fslSigns.isEmpty
+                ? 'Record reviewed sign examples for translation'
+                : '${controller.fslSigns.length} predefined FSL signs',
+            onTap: onOpenSignData,
           ),
         ]),
         _section('About', [
@@ -307,9 +322,8 @@ class SettingsScreen extends StatelessWidget {
             Expanded(
               child: Text(
                 'About SENZ',
-                style: Theme.of(dialogContext).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
+                style: Theme.of(dialogContext).textTheme.titleLarge
+                    ?.copyWith(fontWeight: FontWeight.w700),
               ),
             ),
             IconButton(
@@ -331,9 +345,8 @@ class SettingsScreen extends StatelessWidget {
                 children: [
                   Text(
                     'SENZ is a finger-sensor-based system designed to translate selected Filipino Sign Language (FSL) gestures into spoken speech. It uses flex sensors to detect finger movements and a mobile application to display recognized gestures and provide spoken output.',
-                    style: Theme.of(dialogContext).textTheme.bodyMedium?.copyWith(
-                      height: 1.5,
-                    ),
+                    style: Theme.of(dialogContext).textTheme.bodyMedium
+                        ?.copyWith(height: 1.5),
                   ),
                   const SizedBox(height: 20),
                   _aboutSection(
@@ -341,9 +354,8 @@ class SettingsScreen extends StatelessWidget {
                     'Our Purpose',
                     Text(
                       'SENZ aims to support communication between people who use selected FSL gestures and people who may not understand them by converting recognized gestures into spoken words or phrases.',
-                      style: Theme.of(dialogContext).textTheme.bodyMedium?.copyWith(
-                        height: 1.5,
-                      ),
+                      style: Theme.of(dialogContext).textTheme.bodyMedium
+                          ?.copyWith(height: 1.5),
                     ),
                   ),
                   _aboutSection(
@@ -351,11 +363,31 @@ class SettingsScreen extends StatelessWidget {
                     'How It Works',
                     Column(
                       children: [
-                        _aboutStep(dialogContext, 1, 'The user wears a glove equipped with five flex sensors.'),
-                        _aboutStep(dialogContext, 2, 'The Arduino Uno reads the finger-bending values.'),
-                        _aboutStep(dialogContext, 3, 'The ESP32 sends sensor readings to the mobile app through Bluetooth.'),
-                        _aboutStep(dialogContext, 4, 'The app matches a supported gesture and displays its word or phrase.'),
-                        _aboutStep(dialogContext, 5, 'Text-to-speech speaks the recognized output.'),
+                        _aboutStep(
+                          dialogContext,
+                          1,
+                          'The user wears a glove equipped with five flex sensors.',
+                        ),
+                        _aboutStep(
+                          dialogContext,
+                          2,
+                          'The Arduino Uno reads the finger-bending values.',
+                        ),
+                        _aboutStep(
+                          dialogContext,
+                          3,
+                          'The ESP32 sends sensor readings to the mobile app through Bluetooth.',
+                        ),
+                        _aboutStep(
+                          dialogContext,
+                          4,
+                          'The app matches a supported gesture and displays its word or phrase.',
+                        ),
+                        _aboutStep(
+                          dialogContext,
+                          5,
+                          'Text-to-speech speaks the recognized output.',
+                        ),
                       ],
                     ),
                   ),
@@ -365,12 +397,27 @@ class SettingsScreen extends StatelessWidget {
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _aboutBullet(dialogContext, 'Five-finger sensor monitoring'),
-                        _aboutBullet(dialogContext, 'Bluetooth device connection'),
-                        _aboutBullet(dialogContext, 'Predefined, one-hand gesture recognition'),
-                        _aboutBullet(dialogContext, 'Spoken output using text-to-speech'),
+                        _aboutBullet(
+                          dialogContext,
+                          'Five-finger sensor monitoring',
+                        ),
+                        _aboutBullet(
+                          dialogContext,
+                          'Bluetooth device connection',
+                        ),
+                        _aboutBullet(
+                          dialogContext,
+                          'Predefined, one-hand gesture recognition',
+                        ),
+                        _aboutBullet(
+                          dialogContext,
+                          'Spoken output using text-to-speech',
+                        ),
                         _aboutBullet(dialogContext, 'Gesture history'),
-                        _aboutBullet(dialogContext, 'User-friendly mobile interface'),
+                        _aboutBullet(
+                          dialogContext,
+                          'User-friendly mobile interface',
+                        ),
                       ],
                     ),
                   ),
@@ -380,12 +427,30 @@ class SettingsScreen extends StatelessWidget {
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _aboutBullet(dialogContext, 'Flutter and Dart — mobile application'),
-                        _aboutBullet(dialogContext, 'Arduino Uno — sensor data collection'),
-                        _aboutBullet(dialogContext, 'ESP32-WROOM-32 — wireless communication'),
-                        _aboutBullet(dialogContext, 'Five flex sensors — finger movement detection'),
-                        _aboutBullet(dialogContext, 'Bluetooth Low Energy — planned wireless data transfer'),
-                        _aboutBullet(dialogContext, 'Text-to-speech — spoken output'),
+                        _aboutBullet(
+                          dialogContext,
+                          'Flutter and Dart — mobile application',
+                        ),
+                        _aboutBullet(
+                          dialogContext,
+                          'Arduino Uno — sensor data collection',
+                        ),
+                        _aboutBullet(
+                          dialogContext,
+                          'ESP32-WROOM-32 — wireless communication',
+                        ),
+                        _aboutBullet(
+                          dialogContext,
+                          'Five flex sensors — finger movement detection',
+                        ),
+                        _aboutBullet(
+                          dialogContext,
+                          'Bluetooth Low Energy — planned wireless data transfer',
+                        ),
+                        _aboutBullet(
+                          dialogContext,
+                          'Text-to-speech — spoken output',
+                        ),
                       ],
                     ),
                   ),
@@ -397,8 +462,14 @@ class SettingsScreen extends StatelessWidget {
                       children: [
                         _aboutBullet(dialogContext, 'App Name: SENZ'),
                         _aboutBullet(dialogContext, 'Version: 1.0.0 (Draft)'),
-                        _aboutBullet(dialogContext, 'Platform: Android; iOS support planned'),
-                        _aboutBullet(dialogContext, 'Status: Prototype development'),
+                        _aboutBullet(
+                          dialogContext,
+                          'Platform: Android; iOS support planned',
+                        ),
+                        _aboutBullet(
+                          dialogContext,
+                          'Status: Prototype development',
+                        ),
                       ],
                     ),
                   ),
@@ -414,17 +485,17 @@ class SettingsScreen extends StatelessWidget {
                       children: [
                         Text(
                           'Important Note',
-                          style: Theme.of(dialogContext).textTheme.titleSmall?.copyWith(
-                            color: colors.primary,
-                            fontWeight: FontWeight.w700,
-                          ),
+                          style: Theme.of(dialogContext).textTheme.titleSmall
+                              ?.copyWith(
+                                color: colors.primary,
+                                fontWeight: FontWeight.w700,
+                              ),
                         ),
                         const SizedBox(height: 6),
                         Text(
                           'SENZ is designed for selected, predefined one-hand gestures. It is not intended to translate every FSL sign or replace a qualified sign language interpreter. Recognition performance will depend on prototype testing and calibration.',
-                          style: Theme.of(dialogContext).textTheme.bodySmall?.copyWith(
-                            height: 1.5,
-                          ),
+                          style: Theme.of(dialogContext).textTheme.bodySmall
+                              ?.copyWith(height: 1.5),
                         ),
                       ],
                     ),
@@ -493,7 +564,8 @@ class SettingsScreen extends StatelessWidget {
         Expanded(
           child: Text(
             text,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(height: 1.4),
+            style: Theme.of(context).textTheme.bodyMedium
+                ?.copyWith(height: 1.4),
           ),
         ),
       ],
@@ -517,13 +589,13 @@ class SettingsScreen extends StatelessWidget {
         Expanded(
           child: Text(
             text,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(height: 1.4),
+            style: Theme.of(context).textTheme.bodyMedium
+                ?.copyWith(height: 1.4),
           ),
         ),
       ],
     ),
   );
-
 }
 
 class DeviceConnectionSheet extends StatefulWidget {

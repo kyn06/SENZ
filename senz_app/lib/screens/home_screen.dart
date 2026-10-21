@@ -168,7 +168,7 @@ class HomeScreen extends StatelessWidget {
                         Text(
                           demo
                               ? 'Explore the interface with simulated sensor readings.'
-                              : 'Capture one sign and check it against the configured vocabulary.',
+                              : 'Open Translate for live matching against saved FSL examples.',
                           style: const TextStyle(
                             color: Colors.white,
                             fontSize: 13,

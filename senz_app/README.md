@@ -23,14 +23,18 @@ Sensor notifications contain five comma-separated integers in Thumb, Index, Midd
 
 ## FSL recognition status
 
-The translation screen can capture one time-ordered sensor sequence, normalize it with the user's open/closed hand calibration, and compare it with predefined examples in `lib/models/fsl_sign.dart`. That catalog is intentionally empty until an FSL-only vocabulary, meanings, variants, and recordings are reviewed with FSL signers. No ASL signs are included. With no examples configured, a capture correctly returns **Not recognized**; simulated demo readings are never treated as FSL.
+The FSL catalog starts empty in `lib/models/fsl_sign.dart`. Open **Settings → FSL Sign Data** to add a reviewer-approved sign label, Filipino phrase, and one or more recordings from the connected, calibrated BLE glove. Those normalized examples are saved locally with app state. The capture controls are disabled in Demo Mode so simulated values cannot enter the FSL catalog.
+
+When **Translate** is open, the app continuously compares a rolling 12-reading window against the saved examples. It requires a stable match across repeated windows before adding a history entry and speaking the Filipino phrase. It unlocks the same sign after several unmatched windows so the user can sign it again. This is an initial real-time prototype algorithm; its distance threshold and behavior need testing with the actual glove and signer-separated FSL recordings.
+
+No FSL examples are included by default. The catalog must be populated with FSL-reviewed vocabulary and recordings before translation can recognize anything. The app cannot independently verify that an operator-entered label is a valid FSL sign. Simulated demo readings are never treated as FSL.
 
 The current BLE payload contains only five flex readings. It does not report palm orientation or hand motion, and the app has not been checked against the physical glove. Before choosing a one-hand vocabulary, check which signs the glove can distinguish. Keep the five flex channels; if selected signs require orientation or movement, agree on an IMU and a versioned BLE payload with the firmware team. Record sample timing, channel units/ranges, sensor calibration, and any IMU axis/units in that protocol before adding parser support. Recognition distances and thresholds also need tuning and signer-separated validation data before making accuracy claims.
 
 ## Code layout
 
-- `lib/screens/` contains Welcome, Dashboard, Sensor Readings, Gesture Translation, History, and Settings screens.
-- `lib/services/` separates BLE, parsing, demo readings, sequence recognition, and shared app state.
+- `lib/screens/` contains Welcome, Home, Sensor Readings, FSL Sign Data, real-time Gesture Translation, History, and Settings screens.
+- `lib/services/` separates BLE, parsing, demo readings, sequence recognition, local state storage, and shared app state.
 - `lib/models/fsl_sign.dart` defines the FSL-reviewed catalog structure and example sequences.
 - `lib/models/sensor_reading.dart` defines timestamped readings and recognition history entries.
 

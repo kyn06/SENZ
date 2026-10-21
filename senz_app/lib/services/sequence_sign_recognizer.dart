@@ -30,6 +30,7 @@ class SequenceSignRecognizer {
     List<List<int>> sequence, {
     required List<int> openHandBaseline,
     required List<int> closedHandBaseline,
+    Iterable<FslSignDefinition>? signs,
   }) {
     if (sequence.length < 2 || sequence.any((frame) => frame.length != 5)) {
       return null;
@@ -37,14 +38,16 @@ class SequenceSignRecognizer {
     if (openHandBaseline.length != 5 || closedHandBaseline.length != 5) {
       return null;
     }
-    if (List<int>.generate(5, (i) => closedHandBaseline[i] - openHandBaseline[i])
-        .any((span) => span == 0)) {
+    if (List<int>.generate(
+      5,
+      (i) => closedHandBaseline[i] - openHandBaseline[i],
+    ).any((span) => span == 0)) {
       return null;
     }
 
     FslSignDefinition? bestSign;
     var bestDistance = double.infinity;
-    for (final sign in catalog) {
+    for (final sign in signs ?? catalog) {
       for (final example in sign.examples) {
         final distance = _distance(
           sequence,
@@ -87,37 +90,32 @@ class SequenceSignRecognizer {
     List<List<int>> frames,
     List<int> openHandBaseline,
     List<int> closedHandBaseline,
-  ) => List.generate(
-    sequenceLength,
-    (index) {
-      final position = index * (frames.length - 1) / (sequenceLength - 1);
-      final lower = position.floor();
-      final upper = position.ceil();
-      final fraction = position - lower;
-      return List<double>.generate(5, (channel) {
-        final a = frames[lower][channel].clamp(0, 4095).toDouble();
-        final b = frames[upper][channel].clamp(0, 4095).toDouble();
-        final interpolated = a + (b - a) * fraction;
-        final span = closedHandBaseline[channel] - openHandBaseline[channel];
-        return ((interpolated - openHandBaseline[channel]) / span)
-            .clamp(0.0, 1.0)
-            .toDouble();
-      });
-    },
-  );
+  ) => List.generate(sequenceLength, (index) {
+    final position = index * (frames.length - 1) / (sequenceLength - 1);
+    final lower = position.floor();
+    final upper = position.ceil();
+    final fraction = position - lower;
+    return List<double>.generate(5, (channel) {
+      final a = frames[lower][channel].clamp(0, 4095).toDouble();
+      final b = frames[upper][channel].clamp(0, 4095).toDouble();
+      final interpolated = a + (b - a) * fraction;
+      final span = closedHandBaseline[channel] - openHandBaseline[channel];
+      return ((interpolated - openHandBaseline[channel]) / span)
+          .clamp(0.0, 1.0)
+          .toDouble();
+    });
+  });
 
-  List<List<double>> _resampleExample(List<List<double>> frames) => List.generate(
-    sequenceLength,
-    (index) {
-      final position = index * (frames.length - 1) / (sequenceLength - 1);
-      final lower = position.floor();
-      final upper = position.ceil();
-      final fraction = position - lower;
-      return List<double>.generate(5, (channel) {
-        final a = frames[lower][channel].clamp(0.0, 1.0).toDouble();
-        final b = frames[upper][channel].clamp(0.0, 1.0).toDouble();
-        return a + (b - a) * fraction;
+  List<List<double>> _resampleExample(List<List<double>> frames) =>
+      List.generate(sequenceLength, (index) {
+        final position = index * (frames.length - 1) / (sequenceLength - 1);
+        final lower = position.floor();
+        final upper = position.ceil();
+        final fraction = position - lower;
+        return List<double>.generate(5, (channel) {
+          final a = frames[lower][channel].clamp(0.0, 1.0).toDouble();
+          final b = frames[upper][channel].clamp(0.0, 1.0).toDouble();
+          return a + (b - a) * fraction;
+        });
       });
-    },
-  );
 }
