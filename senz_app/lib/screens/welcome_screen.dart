@@ -50,7 +50,7 @@ class WelcomeScreen extends StatelessWidget {
                       const Padding(
                         padding: EdgeInsets.symmetric(horizontal: 4),
                         child: Text(
-                          'A smart glove system that translates hand gestures into speech for better communication.',
+                          'A smart glove prototype for recognizing a predefined set of one-hand FSL signs and showing their meanings.',
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             fontSize: 14,

@@ -23,7 +23,8 @@ class BluetoothSensorService extends ChangeNotifier implements SensorService {
   StreamSubscription<ConnectionStateUpdate>? _connectionSubscription;
   StreamSubscription<List<int>>? _notificationSubscription;
   Timer? _reconnectTimer;
-  DiscoveredDevice? _lastDevice;
+  String? _lastDeviceId;
+  String? _lastDeviceName;
   bool _intentionalDisconnect = true;
 
   BleStatus status = BleStatus.unknown;
@@ -65,11 +66,21 @@ class BluetoothSensorService extends ChangeNotifier implements SensorService {
     }
   }
 
+  Future<void> refreshStatus() async {
+    try {
+      await _ble.initialize();
+      status = _ble.status;
+    } catch (error) {
+      errorMessage = 'Could not check Bluetooth status: $error';
+    }
+    notifyListeners();
+  }
+
   Future<void> startScan() async {
     if (isScanning) return;
     if (status != BleStatus.ready) {
       errorMessage = status == BleStatus.unauthorized
-          ? 'Allow Bluetooth access in device settings.'
+          ? 'SENZ does not have permission to use Bluetooth. Allow it in this app\'s system permissions, then scan again.'
           : 'Turn on Bluetooth to scan for SENZ devices.';
       notifyListeners();
       return;
@@ -118,21 +129,29 @@ class BluetoothSensorService extends ChangeNotifier implements SensorService {
   }
 
   Future<void> connect(DiscoveredDevice device) async {
+    await _connectTo(device.id, _displayName(device));
+  }
+
+  Future<void> reconnectDevice(String deviceId, String deviceName) =>
+      _connectTo(deviceId, deviceName);
+
+  Future<void> _connectTo(String deviceId, String deviceName) async {
     await stopScan();
     await disconnect();
-    _lastDevice = device;
+    _lastDeviceId = deviceId;
+    _lastDeviceName = deviceName;
     _intentionalDisconnect = false;
     errorMessage = null;
-    connectionMessage = 'Connecting to ${_displayName(device)}…';
-    connectedDeviceId = device.id;
-    connectedDeviceName = _displayName(device);
+    connectionMessage = 'Connecting to $deviceName…';
+    connectedDeviceId = deviceId;
+    connectedDeviceName = deviceName;
     _parser.reset();
     notifyListeners();
 
     try {
       _connectionSubscription = _ble
           .connectToDevice(
-            id: device.id,
+            id: deviceId,
             connectionTimeout: const Duration(seconds: 12),
           )
           .listen(
@@ -144,7 +163,7 @@ class BluetoothSensorService extends ChangeNotifier implements SensorService {
                   isConnected = true;
                   connectionMessage = 'Connected';
                   errorMessage = null;
-                  unawaited(_subscribeToSensorData(device.id));
+                  unawaited(_subscribeToSensorData(deviceId));
                 case DeviceConnectionState.disconnecting:
                   connectionMessage = 'Disconnecting…';
                 case DeviceConnectionState.disconnected:
@@ -270,12 +289,17 @@ class BluetoothSensorService extends ChangeNotifier implements SensorService {
   }
 
   void _scheduleReconnect() {
-    final device = _lastDevice;
-    if (device == null || _reconnectTimer?.isActive == true) return;
+    final deviceId = _lastDeviceId;
+    final deviceName = _lastDeviceName;
+    if (deviceId == null ||
+        deviceName == null ||
+        _reconnectTimer?.isActive == true) {
+      return;
+    }
     connectionMessage = 'Connection lost; retrying…';
     _reconnectTimer = Timer(const Duration(seconds: 3), () {
       if (!autoReconnect || _intentionalDisconnect || isConnected) return;
-      unawaited(connect(device));
+      unawaited(_connectTo(deviceId, deviceName));
     });
   }
 

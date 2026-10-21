@@ -111,7 +111,7 @@ class HistoryScreen extends StatelessWidget {
         ),
         IconButton(
           tooltip: 'Speak ${entry.name}',
-          onPressed: () => controller.speakText(entry.name),
+          onPressed: () => controller.speakText(entry.translation ?? entry.name),
           icon: const Icon(Icons.play_arrow_rounded, size: 20),
           color: Colors.white,
           style: IconButton.styleFrom(

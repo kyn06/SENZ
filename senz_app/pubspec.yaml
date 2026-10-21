@@ -28,6 +28,7 @@ environment:
 # the latest version available on pub.dev. To see which dependencies have newer
 # versions available, run `flutter pub outdated`.
 dependencies:
+  device_info_plus: ^13.3.0
   flutter:
     sdk: flutter
 
@@ -36,6 +37,8 @@ dependencies:
   cupertino_icons: ^1.0.8
   flutter_reactive_ble: ^5.6.0
   flutter_tts: ^4.2.5
+  permission_handler: ^13.0.2
+  shared_preferences: ^2.5.6
 
 dev_dependencies:
   flutter_test:

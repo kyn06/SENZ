@@ -67,8 +67,7 @@ class SettingsScreen extends StatelessWidget {
           _row(
             icon: Icons.language_rounded,
             title: 'Speech Language',
-            detail: _languageName(controller.speechLanguage),
-            onTap: () => _chooseLanguage(context),
+            detail: 'Filipino',
           ),
           _row(
             icon: Icons.speed_rounded,
@@ -86,7 +85,7 @@ class SettingsScreen extends StatelessWidget {
           _row(
             icon: Icons.volunteer_activism_outlined,
             title: 'About SENZ',
-            detail: 'Demo gestures are not sign-language translation',
+            detail: 'FSL vocabulary and sensor data are still being prepared',
             onTap: () => _showAbout(context),
           ),
         ]),
@@ -253,48 +252,6 @@ class SettingsScreen extends StatelessWidget {
     );
   }
 
-  Future<void> _chooseLanguage(BuildContext context) async {
-    await showModalBottomSheet<void>(
-      context: context,
-      showDragHandle: true,
-      builder: (sheetContext) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _choice(
-              sheetContext,
-              'English (US)',
-              'en-US',
-              controller.speechLanguage,
-            ),
-            _choice(
-              sheetContext,
-              'Filipino',
-              'fil-PH',
-              controller.speechLanguage,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _choice(
-    BuildContext context,
-    String label,
-    String value,
-    String selected,
-  ) => ListTile(
-    title: Text(label),
-    trailing: selected == value
-        ? const Icon(Icons.check, color: senzGreen)
-        : null,
-    onTap: () {
-      controller.setSpeechLanguage(value);
-      Navigator.pop(context);
-    },
-  );
-
   Future<void> _chooseSpeed(BuildContext context) async {
     await showModalBottomSheet<void>(
       context: context,
@@ -338,15 +295,235 @@ class SettingsScreen extends StatelessWidget {
     );
   }
 
-  void _showAbout(BuildContext context) => showAboutDialog(
+  void _showAbout(BuildContext context) => showDialog<void>(
     context: context,
-    applicationName: 'SENZ',
-    applicationVersion: '1.0.0',
-    applicationLegalese: 'Demo patterns are for interface development only. They are not validated sign-language translations.',
+    builder: (dialogContext) {
+      final screenSize = MediaQuery.sizeOf(dialogContext);
+      final colors = Theme.of(dialogContext).colorScheme;
+      return AlertDialog(
+        titlePadding: const EdgeInsets.fromLTRB(24, 20, 16, 0),
+        title: Row(
+          children: [
+            Expanded(
+              child: Text(
+                'About SENZ',
+                style: Theme.of(dialogContext).textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+            IconButton(
+              tooltip: 'Close About SENZ',
+              onPressed: () => Navigator.pop(dialogContext),
+              icon: const Icon(Icons.close_rounded),
+              constraints: const BoxConstraints.tightFor(width: 48, height: 48),
+            ),
+          ],
+        ),
+        contentPadding: const EdgeInsets.fromLTRB(24, 8, 24, 0),
+        content: SizedBox(
+          width: screenSize.width * .78,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxHeight: screenSize.height * .62),
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'SENZ is a finger-sensor-based system designed to translate selected Filipino Sign Language (FSL) gestures into spoken speech. It uses flex sensors to detect finger movements and a mobile application to display recognized gestures and provide spoken output.',
+                    style: Theme.of(dialogContext).textTheme.bodyMedium?.copyWith(
+                      height: 1.5,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  _aboutSection(
+                    dialogContext,
+                    'Our Purpose',
+                    Text(
+                      'SENZ aims to support communication between people who use selected FSL gestures and people who may not understand them by converting recognized gestures into spoken words or phrases.',
+                      style: Theme.of(dialogContext).textTheme.bodyMedium?.copyWith(
+                        height: 1.5,
+                      ),
+                    ),
+                  ),
+                  _aboutSection(
+                    dialogContext,
+                    'How It Works',
+                    Column(
+                      children: [
+                        _aboutStep(dialogContext, 1, 'The user wears a glove equipped with five flex sensors.'),
+                        _aboutStep(dialogContext, 2, 'The Arduino Uno reads the finger-bending values.'),
+                        _aboutStep(dialogContext, 3, 'The ESP32 sends sensor readings to the mobile app through Bluetooth.'),
+                        _aboutStep(dialogContext, 4, 'The app matches a supported gesture and displays its word or phrase.'),
+                        _aboutStep(dialogContext, 5, 'Text-to-speech speaks the recognized output.'),
+                      ],
+                    ),
+                  ),
+                  _aboutSection(
+                    dialogContext,
+                    'Key Features',
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _aboutBullet(dialogContext, 'Five-finger sensor monitoring'),
+                        _aboutBullet(dialogContext, 'Bluetooth device connection'),
+                        _aboutBullet(dialogContext, 'Predefined, one-hand gesture recognition'),
+                        _aboutBullet(dialogContext, 'Spoken output using text-to-speech'),
+                        _aboutBullet(dialogContext, 'Gesture history'),
+                        _aboutBullet(dialogContext, 'User-friendly mobile interface'),
+                      ],
+                    ),
+                  ),
+                  _aboutSection(
+                    dialogContext,
+                    'Technology Used',
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _aboutBullet(dialogContext, 'Flutter and Dart — mobile application'),
+                        _aboutBullet(dialogContext, 'Arduino Uno — sensor data collection'),
+                        _aboutBullet(dialogContext, 'ESP32-WROOM-32 — wireless communication'),
+                        _aboutBullet(dialogContext, 'Five flex sensors — finger movement detection'),
+                        _aboutBullet(dialogContext, 'Bluetooth Low Energy — planned wireless data transfer'),
+                        _aboutBullet(dialogContext, 'Text-to-speech — spoken output'),
+                      ],
+                    ),
+                  ),
+                  _aboutSection(
+                    dialogContext,
+                    'Version Information',
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _aboutBullet(dialogContext, 'App Name: SENZ'),
+                        _aboutBullet(dialogContext, 'Version: 1.0.0 (Draft)'),
+                        _aboutBullet(dialogContext, 'Platform: Android; iOS support planned'),
+                        _aboutBullet(dialogContext, 'Status: Prototype development'),
+                      ],
+                    ),
+                  ),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: colors.primaryContainer.withValues(alpha: .55),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Important Note',
+                          style: Theme.of(dialogContext).textTheme.titleSmall?.copyWith(
+                            color: colors.primary,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          'SENZ is designed for selected, predefined one-hand gestures. It is not intended to translate every FSL sign or replace a qualified sign language interpreter. Recognition performance will depend on prototype testing and calibration.',
+                          style: Theme.of(dialogContext).textTheme.bodySmall?.copyWith(
+                            height: 1.5,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        actionsPadding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+        actions: [
+          TextButton(
+            onPressed: () => showLicensePage(
+              context: dialogContext,
+              applicationName: 'SENZ',
+              applicationVersion: '1.0.0 (Draft)',
+            ),
+            child: const Text('Open-source licenses'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Done'),
+          ),
+        ],
+      );
+    },
   );
 
-  String _languageName(String value) =>
-      value == 'fil-PH' ? 'Filipino' : 'English (US)';
+  Widget _aboutSection(BuildContext context, String title, Widget content) =>
+      Padding(
+        padding: const EdgeInsets.only(bottom: 18),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
+              style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                color: Theme.of(context).colorScheme.primary,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 7),
+            content,
+          ],
+        ),
+      );
+
+  Widget _aboutStep(BuildContext context, int number, String text) => Padding(
+    padding: const EdgeInsets.only(bottom: 10),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        CircleAvatar(
+          radius: 12,
+          backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+          child: Text(
+            '$number',
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.onPrimaryContainer,
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            text,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(height: 1.4),
+          ),
+        ),
+      ],
+    ),
+  );
+
+  Widget _aboutBullet(BuildContext context, String text) => Padding(
+    padding: const EdgeInsets.only(bottom: 7),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(top: 7),
+          child: Icon(
+            Icons.circle,
+            size: 6,
+            color: Theme.of(context).colorScheme.primary,
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            text,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(height: 1.4),
+          ),
+        ),
+      ],
+    ),
+  );
+
 }
 
 class DeviceConnectionSheet extends StatefulWidget {

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -21,17 +23,29 @@ class SenzApp extends StatefulWidget {
   State<SenzApp> createState() => _SenzAppState();
 }
 
-class _SenzAppState extends State<SenzApp> {
+class _SenzAppState extends State<SenzApp> with WidgetsBindingObserver {
   late final SenzController controller;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     controller = SenzController();
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.paused ||
+        state == AppLifecycleState.detached) {
+      unawaited(controller.persistState());
+    }
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    unawaited(controller.persistState());
     controller.dispose();
     super.dispose();
   }

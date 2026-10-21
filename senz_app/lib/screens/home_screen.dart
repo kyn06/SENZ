@@ -167,8 +167,8 @@ class HomeScreen extends StatelessWidget {
                         const SizedBox(height: 8),
                         Text(
                           demo
-                              ? 'Watch a simulated hand pose and hear its demo label.'
-                              : 'Move your hand to translate the sensor pattern.',
+                              ? 'Explore the interface with simulated sensor readings.'
+                              : 'Capture one sign and check it against the configured vocabulary.',
                           style: const TextStyle(
                             color: Colors.white,
                             fontSize: 13,

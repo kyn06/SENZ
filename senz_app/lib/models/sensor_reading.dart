@@ -15,9 +15,11 @@ class GestureRecord {
     required this.name,
     required this.timestamp,
     required this.isSimulated,
+    this.translation,
   });
 
   final String name;
+  final String? translation;
   final DateTime timestamp;
   final bool isSimulated;
 }
